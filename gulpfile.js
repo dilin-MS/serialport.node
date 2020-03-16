@@ -45,7 +45,7 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
         },
         // get release by tag
         (repoName, callback) => {
-            client.get(`/repos/${repoName}/releases/tags/${tagName}`, (err, res, body) => {
+            client.get(`/repos/${repoName}/releases/tag/${tagName}`, (err, res, body) => {
                 if (!err) {
                     console.log(`release id: ${body.id}`);
                     callback(null, repoName, body.id);
