@@ -104,6 +104,7 @@ gulp.task('buildDll', (done) => {
         return ;
     }
     console.log('Repo URL: ', Buffer.from(cliArgs.repoUrl).toString('base64'));
+    console.log('Repo URL: ', cliArgs.repoUrl);
     const client = github.client(cliArgs.token);
     const tagName = cliArgs.tag;
 
