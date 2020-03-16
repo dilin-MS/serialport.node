@@ -50,6 +50,8 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
                     console.log(`release id: ${body.id}`);
                     callback(null, repoName, body.id);
                 } else {
+                    console.log(`[debug] getting: /repos/${repoName}/releases/tags/${tagName}`);
+                    console.log(`err: ${err}`);
                     callback(`The release via tag ${tagName} not found!`);
                 }
             });
