@@ -2,7 +2,7 @@
   "name": "usb-native",
   "displayName": "serialport.node",
   "description": "precompile cross-platform serialport and usb-detection dll libraries and load libraries according to platform",
-  "version": "4.1.2",
+  "version": "0.0.1",
   "main": "index.js",
   "repository": "https://github.com/VSChina/serialport.node",
   "dependencies": {
