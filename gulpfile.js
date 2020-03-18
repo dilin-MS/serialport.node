@@ -24,17 +24,26 @@ function getRepoName(gitUrl) {
     }
 }
 
-function uploadAssets(client, tagName, filePath, distName, callback) {
+function uploadAssets(client, tagName, filePath, libraryName, arch, callback) {
     async.waterfall([
-        // parse repo name from git repository configuration
+        // get assets name
         (callback) => {
+            distName = getPackageName(libraryName, arch);
+            if (!distName) {
+                callback('Fail to get package name');
+            }
+            console.log(`package name: ${distName}`);
+            callback(null, distName);
+        },
+        // parse repo name from git repository configuration
+        (distName, callback) => {
             git.listRemote(['--get-url'], function(err, data) {
                 if (!err) {
                     console.log('Remote url for repository at ' + __dirname + ':');
                     const repoName = getRepoName(data.trim());
                     console.log(repoName);
                     if (repoName) {
-                        callback(null, repoName);
+                        callback(null, distName, repoName);
                     } else {
                         callback('Cannot get repo name for this repository.');
                     }
@@ -44,11 +53,11 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
             });
         },
         // get release by tag
-        (repoName, callback) => {
+        (distName, repoName, callback) => {
             client.get(`/repos/${repoName}/releases/tags/${tagName}`, (err, res, body) => {
                 if (!err) {
                     console.log(`release id: ${body.id}`);
-                    callback(null, repoName, body.id);
+                    callback(null, distName, poName, body.id);
                 } else {
                     console.log(`[debug] getting: /repos/${repoName}/releases/tags/${tagName}`);
                     console.log(`err: ${err}`);
@@ -57,7 +66,7 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
             });
         },
         // check if asset exist or not.
-        (repoName, releaseId, callback) => {
+        (distName, repoName, releaseId, callback) => {
             client.get(`/repos/${repoName}/releases/${releaseId}/assets`, (err, res, body) => {
                 if (!err) {
                     const find = body.find((element) => {
@@ -73,15 +82,15 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
                             }
                         });
                     } else {
-                        callback(null, repoName, releaseId);
+                        callback(null, distName, repoName, releaseId);
                     }
                 } else {
-                    callback(null, repoName, releaseId, null);
+                    callback(null, distName, repoName, releaseId, null);
                 }
             });
         },
         // upload assets to releases.
-        (repoName, releaseId, callback) => {
+        (distName, repoName, releaseId, callback) => {
             const ghRelease = client.release(repoName, releaseId);
             const archive = fs.readFileSync(filePath);
             ghRelease.uploadAssets(archive, {
@@ -100,8 +109,9 @@ function uploadAssets(client, tagName, filePath, distName, callback) {
     });
 }
 
-function getPackageName(nodeName, platform, arch) {
+function getPackageName(nodeName, arch) {
     let packageName;
+    const platform = require('os').platform();
     if (platform == "linux") {
         linuxDistro().then(data => {
             packageName = `${nodeName}_${data.os}${data.release || data.code}_${electron}_${arch}.node`;
@@ -124,9 +134,8 @@ gulp.task('build', (done)=> {
     const client = github.client(cliArgs.token);
     const tagName = cliArgs.tag;
 
-    const platform = require('os').platform();
     const archs = ["ia32", "x64"];
-    electron = "7.1.11";
+    electron = "6.1.4";
 
     const tasks = [];
     async.waterfall([
@@ -137,7 +146,8 @@ gulp.task('build', (done)=> {
             tasks.push((callback) => {
                 const detectionPath = "./node_modules/usb-detection";
                 const detectionNodePath = path.normalize(path.join(__dirname, detectionPath, 'build/Release/detection.node'));
-                const detectionPackageName = getPackageName("detector", platform, arch);
+                // const detectionPackageName = getPackageName("detector", platform, arch);
+                const libraryName = "detector";
                 console.log(`[node-gyp] Starting to build usb-detection binary version for electron ${electron} and arch ${arch}.`);
                 const compile = exec(`${rebuildCommand}`, {cwd: path.join(__dirname, path.normalize(detectionPath))});
                 if (compile.code) {
@@ -145,14 +155,15 @@ gulp.task('build', (done)=> {
                 } else {
                     console.log('[node-gyp] Build complete.');
                     console.log(`Generate dll at ${detectionNodePath}`);
-                    // uploadAssets(client, tagName, detectionNodePath, detectionPackageName, callback);
+                    uploadAssets(client, tagName, detectionNodePath, libraryName, arch, callback);
                 }
             });
 
             tasks.push((callback) => {
                 const serialportPath = "./node_modules/@serialport/bindings";
                 const serialportNodePath = path.normalize(path.join(serialportPath, 'build/Release/bindings.node'));
-                const serialportPackageName = getPackageName("serialport", platform, arch);
+                // const serialportPackageName = getPackageName("serialport", platform, arch);
+                const libraryName = "serialport";
                 console.log(`[node-gyp] Starting to build serialport binary version for electron ${electron} and arch ${arch}.`);
                 const compile = exec(`${rebuildCommand}`, {cwd: path.normalize(serialportPath)});
                 if (compile.code) {
@@ -160,7 +171,7 @@ gulp.task('build', (done)=> {
                 } else {
                     console.log('[node-gyp] Build complete.');
                     console.log(`Generate dll at ${serialportNodePath}`);
-                    // uploadAssets(client, tagName, serialportNodePath, serialportPackageName, callback);
+                    uploadAssets(client, tagName, serialportNodePath, libraryName, arch, callback);
                 }
             });
         });
