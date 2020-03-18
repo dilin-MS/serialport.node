@@ -117,7 +117,6 @@ function getPackageName(nodeName, platform, arch) {
 }
 
 gulp.task('build', (done)=> {
-    console.log(process.argv);
     if (!cliArgs.token || !cliArgs.tag) {
         done('Missing token, tag parameters!');
         return ;

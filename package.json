@@ -14,7 +14,6 @@
     "async": "^2.1.4",
     "azure-storage": "^1.4.0",
     "gulp": "^4.0.2",
-    "gulp-cli": "^2.2.0",
     "linux-distro": "^4.0.1",
     "nan": "^2.12.1",
     "node-gyp": "^6.1.0",
