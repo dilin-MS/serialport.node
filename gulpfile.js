@@ -145,7 +145,7 @@ gulp.task('build', (done)=> {
                 } else {
                     console.log('[node-gyp] Build complete.');
                     console.log(`Generate dll at ${detectionNodePath}`);
-                    uploadAssets(client, tagName, detectionNodePath, detectionPackageName, callback);
+                    // uploadAssets(client, tagName, detectionNodePath, detectionPackageName, callback);
                 }
             });
 
@@ -160,7 +160,7 @@ gulp.task('build', (done)=> {
                 } else {
                     console.log('[node-gyp] Build complete.');
                     console.log(`Generate dll at ${serialportNodePath}`);
-                    uploadAssets(client, tagName, serialportNodePath, serialportPackageName, callback);
+                    // uploadAssets(client, tagName, serialportNodePath, serialportPackageName, callback);
                 }
             });
         });
@@ -170,3 +170,89 @@ gulp.task('build', (done)=> {
         done(error);
     });
 });
+
+// Usage: gulp update-native-assets --token="$GITHUB_APT" --tagName="downloads" --electron="7.1.11"
+gulp.task('update-native-assets', (done) => {    
+    if (!cliArgs.token || !cliArgs.tag || !cliArgs.electron) {
+        done('Missing token, tag parameters!');
+        return ;
+    }
+    const client = github.client(cliArgs.token);
+    const tagName = cliArgs.tag;
+    const electronVersion = cliArgs.electron;
+
+    async.waterfall([
+        // parse repo name from git repository configuration
+        (callback) => {
+            git.listRemote(['--get-url'], function(err, data) {
+                if (!err) {
+                    console.log('Remote url for repository at ' + __dirname + ':');
+                    const repoName = getRepoName(data.trim());
+                    console.log(repoName);
+                    if (repoName) {
+                        callback(null, repoName);
+                    } else {
+                        callback('Cannot get repo name for this repository.');
+                    }
+                } else {
+                    callback(err);
+                }
+            });
+        },
+        // get release by tag
+        (repoName, callback) => {
+            client.get(`/repos/${repoName}/releases/tags/${tagName}`, (err, res, body) => {
+                if (!err) {
+                    console.log(`release id: ${body.id}`);
+                    callback(null, repoName, body.id);
+                } else {
+                    console.log(`[debug] getting: /repos/${repoName}/releases/tags/${tagName}`);
+                    console.log(`err: ${err}`);
+                    callback(`The release via tag ${tagName} not found!`);
+                }
+            });
+        },
+        // check if asset exist or not.
+        (repoName, releaseId, callback) => {
+            client.get(`/repos/${repoName}/releases/${releaseId}/assets`, (err, res, body) => {
+                if (!err) {
+                    const find = body.find((element) => {
+                        return element.name === distName;
+                    });
+                    if (find) {
+                        console.log(`Finded an existing asset '${distName} in github release and delete it first.`);
+                        client.del(`/repos/${repoName}/releases/assets/${find.id}`, null, (err1, res1, body1) => {
+                            if (err1) {
+                                callback(`Cannot delete assets '${distName}'. See the error '${err1}'`);
+                            } else {
+                                callback(null, repoName, releaseId);
+                            }
+                        });
+                    } else {
+                        callback(null, repoName, releaseId);
+                    }
+                } else {
+                    callback(null, repoName, releaseId, null);
+                }
+            });
+        },
+        // upload assets to releases.
+        (repoName, releaseId, callback) => {
+            const ghRelease = client.release(repoName, releaseId);
+            const archive = fs.readFileSync(filePath);
+            ghRelease.uploadAssets(archive, {
+                name: distName,
+                contentType: 'application/octet-stream',
+                uploadHost: 'uploads.github.com',
+            }, (err, res, body) => {
+                if (!err) {
+                    console.log(`Succeeded to upload assets '${distName}' to github release '${tagName}'`);
+                }
+                callback(err);
+            });
+        }
+    ], (error, results) => {
+        callback(error);
+    });
+
+})
