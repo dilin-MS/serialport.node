@@ -1,14 +1,23 @@
 {
-  "name": "serialport.node",
+  "name": "usb-native",
   "displayName": "serialport.node",
-  "description": "precompiled cross-platform serialport.node dll libraries",
-  "version": "0.0.1",
+  "description": "precompile cross-platform serialport and usb-detection dll libraries and load libraries according to platform",
+  "version": "4.1.2",
+  "main": "index.js",
+  "repository": "https://github.com/VSChina/serialport.node",
+  "dependencies": {
+    "fs-extra": "^8.1.0",
+    "serialport": "^8.0.7",
+    "usb-detection": "^4.7.0"
+  },
   "devDependencies": {
     "async": "^2.1.4",
     "azure-storage": "^1.4.0",
-    "gulp": "^3.9.1",
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.2.0",
     "linux-distro": "^4.0.1",
     "nan": "^2.12.1",
+    "node-gyp": "^6.1.0",
     "octonode": "^0.7.8",
     "shelljs": "^0.7.6",
     "simple-git": "^1.65.0",
